@@ -2,14 +2,15 @@ syntax = "proto3";
 
 package techschool.pcbook;
 
+import "google/protobuf/timestamp.proto";
 import "keboard_message.proto";
 import "memory_message.proto";
 import "processor_message.proto";
 import "screen_message.proto";
 import "storage_message.proto";
-import "google/protobuf/timestamp.proto";
 
 option go_package = ".;pb";
+
 
 message Laptop {
     string id = 1;
