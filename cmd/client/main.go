@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"pcbook-learn-grpc/pb"
 	"pcbook-learn-grpc/sample"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -74,6 +76,7 @@ func searchLaptop(client pb.LaptopServiceClient, filter *pb.Filter) {
 	}
 }
 
+// nolint:unused
 func uploadImage(laptopClient pb.LaptopServiceClient, laptopID string, imagePath string) {
 	file, err := os.Open(imagePath)
 	if err != nil {
@@ -133,6 +136,59 @@ func uploadImage(laptopClient pb.LaptopServiceClient, laptopID string, imagePath
 }
 
 // nolint:unused
+func rateLaptop(laptopClient pb.LaptopServiceClient, laptopIDs []string, scores []float64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stream, err := laptopClient.RateLaptop(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot rate laptop: %v", err)
+	}
+
+	waitResponse := make(chan error)
+	// goroutine to receive responses
+	go func() {
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				log.Print("no more responses")
+				waitResponse <- nil
+				return
+			}
+			if err != nil {
+				waitResponse <- fmt.Errorf("cannot receive stream response: %v", err)
+				return
+			}
+
+			log.Printf("received response: %v", res)
+		}
+	}()
+
+	// send requests
+	for i, laptopID := range laptopIDs {
+		req := &pb.RateLaptopRequest{
+			LaptopId: laptopID,
+			Score:    scores[i],
+		}
+
+		err := stream.Send(req)
+		if err != nil {
+			return fmt.Errorf("cannot send stream request: %v - %v", err, stream.RecvMsg(nil))
+		}
+
+		log.Print("sent request: ", req)
+	}
+
+	err = stream.CloseSend()
+	if err != nil {
+		return fmt.Errorf("cannot close send: %v", err)
+	}
+
+	err = <-waitResponse
+	return err
+}
+
+// nolint:unused
 func testCreateLaptop(laptopClient pb.LaptopServiceClient) {
 	createLaptop(laptopClient, sample.NewLaptop())
 }
@@ -153,10 +209,46 @@ func testSearchLaptop(laptopClient pb.LaptopServiceClient) {
 	searchLaptop(laptopClient, filter)
 }
 
+// nolint:unused
 func testUploadImage(laptopClient pb.LaptopServiceClient) {
 	laptop := sample.NewLaptop()
 	createLaptop(laptopClient, laptop)
 	uploadImage(laptopClient, laptop.GetId(), "tmp/laptop.jpg")
+}
+
+// nolint:unused
+func testRateLaptop(laptopClient pb.LaptopServiceClient) {
+	n := 3
+	laptopIDs := make([]string, n)
+
+	for i := 0; i < n; i++ {
+		laptop := sample.NewLaptop()
+		laptopIDs[i] = laptop.GetId()
+		createLaptop(laptopClient, laptop)
+	}
+
+	scores := make([]float64, n)
+	for {
+		fmt.Print("rate laptop (y/n)")
+		var answer string
+		_, err := fmt.Scan(&answer)
+		if err != nil {
+			log.Fatal("cannot can input: ", err)
+		}
+
+		if strings.ToLower(answer) != "y" {
+			break
+		}
+
+		for i := 0; i < n; i++ {
+			scores[i] = sample.RandomLaptopScore()
+		}
+
+		err = rateLaptop(laptopClient, laptopIDs, scores)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func main() {
@@ -170,5 +262,5 @@ func main() {
 	}
 
 	laptopClient := pb.NewLaptopServiceClient(conn)
-	testUploadImage(laptopClient)
+	testRateLaptop(laptopClient)
 }

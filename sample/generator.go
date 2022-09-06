@@ -1,8 +1,9 @@
 package sample
 
 import (
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"pcbook-learn-grpc/pb"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // NewKeyBoard returns a new sample keyboard
@@ -128,4 +129,9 @@ func NewLaptop() *pb.Laptop {
 	}
 
 	return laptop
+}
+
+// RandomLaptopScore returns a random laptop score
+func RandomLaptopScore() float64 {
+	return float64(randomInt(1, 10))
 }
