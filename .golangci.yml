@@ -2,3 +2,6 @@ linters:
   enable:
     - testpackage
     - paralleltest
+run:
+  skip-dirs:
+    - pb
