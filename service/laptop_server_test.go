@@ -2,13 +2,14 @@ package service_test
 
 import (
 	"context"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"pcbook-learn-grpc/pb"
 	"pcbook-learn-grpc/sample"
 	"pcbook-learn-grpc/service"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestLaptopServer_CreateLaptop(t *testing.T) {
@@ -65,7 +66,7 @@ func TestLaptopServer_CreateLaptop(t *testing.T) {
 
 			req := &pb.CreateLaptopRequest{Laptop: tc.laptop}
 
-			server := service.NewLaptopServer(tc.store)
+			server := service.NewLaptopServer(tc.store, nil)
 			res, err := server.CreateLaptop(context.Background(), req)
 			if tc.code == codes.OK {
 				require.NoError(t, err)
